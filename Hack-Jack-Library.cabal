@@ -16,9 +16,26 @@ extra-source-files:  ChangeLog.md, README.md
 cabal-version:       >=1.10
 
 library
-  -- exposed-modules:
+  exposed-modules:     Data.Hack.ASM.ConversionTo.ByteString
+                     , Data.Hack.ASM.ConversionTo.MachineCode
+                     , Data.Hack.ASM.Model
+                     , Data.Hack.MachineCode.ConversionTo.ByteString
+                     , Data.Hack.MachineCode.Model
+                     , Data.Jack.Class.ConversionTo.ByteString.XML
+                     , Data.Jack.Class.ConversionTo.ASMCode
+                     , Data.Jack.Class.ConversionTo.MachineCode
+                     , Data.Jack.Class.ConversionTo.VMCode
+                     , Data.Jack.Class.Model
+                     , Data.Jack.Token.ConversionTo.ByteString.XML
+                     , Data.Jack.Token.ConversionTo.JackClass
+                     , Data.Jack.Token.Model
+                     , Data.VM.ConversionTo.ASMCode
+                     , Data.VM.ConversionTo.ByteString
+                     , Data.VM.ConversionTo.MachineCode
+                     , Data.VM.Model
   -- other-modules:
   -- other-extensions:
+  ghc-options:         -Wall
   build-depends:       base >=4.11 && <4.12
   hs-source-dirs:      src
   default-language:    Haskell2010

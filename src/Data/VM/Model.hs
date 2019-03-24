@@ -1,0 +1,1 @@
+module Data.VM.Model where
