@@ -1,4 +1,6 @@
-module Data.Hack.MachineCode.Model (HackFile) where
+module Data.Hack.MachineCode.Model where
 
-type MachineInstruction = Integer
-type HackFile = [MachineInstruction]
+data HackLine = HackLine { lineNumber :: Integer
+                         , instruction :: Integer
+                         }
+type HackFile = [HackLine]

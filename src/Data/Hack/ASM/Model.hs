@@ -4,6 +4,32 @@ module Data.Hack.ASM.Model where
 
 import qualified Data.ByteString.Char8 as BS
 
+type Program = [Line]
+
+type ASMLineNumber =
+    Integer
+
+type ASMCode =
+    BS.ByteString
+
+data ASMLine =
+    ASMLine ASMLineNumber ASMCode
+    -- deriving (Eq, Show)
+
+data Line =
+    Line
+    ASMLine
+    HSLine
+    -- deriving (Show)
+
+
+
+data Instruction =
+    AddressInstruction Address
+  | ComputeInstruction Computation Destination Jump
+
+type Address = Integer
+
 data Computation =
     ZERO
   | ONE
@@ -53,33 +79,3 @@ data Jump =
   | JNE
   | JLE
   | JMP
-
-type Address = Integer
-
-data Instruction =
-    AddressInstruction Address
-  | ComputeInstruction Computation Destination Jump
-
-type Program = [Line]
-
-type ASMLineNumber =
-    Integer
-
-type ASMCode =
-    BS.ByteString
-
-data ASMLine =
-    ASMLine ASMLineNumber ASMCode
-    -- deriving (Eq, Show)
-
-type HSLineNumber =
-    Integer
-data HSLine =
-    HSLine HSLineNumber Instruction
-    -- deriving (Show)
-
-data Line =
-    Line
-    ASMLine
-    HSLine
-    -- deriving (Show)
