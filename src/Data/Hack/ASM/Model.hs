@@ -6,29 +6,16 @@ import qualified Data.ByteString.Char8 as BS
 
 type Program = [Line]
 
-type ASMLineNumber =
-    Integer
-
-type ASMCode =
-    BS.ByteString
-
-data ASMLine =
-    ASMLine ASMLineNumber ASMCode
-    -- deriving (Eq, Show)
-
-data Line =
-    Line
-    ASMLine
-    HSLine
-    -- deriving (Show)
-
-
+data Line = Line { lineNumber :: Integer
+                 , instruction :: Instruction
+                 }
 
 data Instruction =
-    AddressInstruction Address
-  | ComputeInstruction Computation Destination Jump
-
-type Address = Integer
+    A { address     :: Integer}
+  | C { computation :: Computation
+      , destination :: Destination
+      , jump        :: Jump
+      }
 
 data Computation =
     ZERO
