@@ -19,4 +19,7 @@ instance Convert ASM.Line where
 
 instance Convert ASM.Instruction where
     convert (ASM.A i) = "@" <> toByteString' i
-    convert (ASM.C i) = undefined
+    convert ASM.C{ ASM.computation = c
+                 , ASM.destination = d
+                 , ASM.jump        = j } = 
+                    undefined
