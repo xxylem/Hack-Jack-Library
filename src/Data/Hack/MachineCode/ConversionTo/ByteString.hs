@@ -11,6 +11,7 @@ import Text.Printf (printf)
 convert :: MC.HackFile -> BS.ByteString
 convert [] = ""
 convert (l:ls) =    convertInstruction (MC.instruction l)
+               <>   "\n"
                <>   convert ls
                
 convertInstruction :: MC.Instruction -> BS.ByteString

@@ -2,8 +2,6 @@ module Data.Hack.ASM.Model where
     
 -- Data model for Hack instructions in ASM format.
 
-import qualified Data.ByteString.Char8 as BS
-
 type Program = [Line]
 
 data Line = Line { lineNumber :: Integer
