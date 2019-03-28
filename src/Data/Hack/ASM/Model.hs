@@ -2,11 +2,12 @@ module Data.Hack.ASM.Model where
     
 -- Data model for Hack instructions in ASM format.
 
-type Program = [Line]
-
 data Line = Line { lineNumber :: Integer
-                 , instruction :: Instruction
-                 }
+                 , instruction :: Instruction }
+type Program = [Line]
+data File = File { program :: Program
+                 , path    :: FilePath }
+
 
 data Instruction =
     A { address     :: Integer}

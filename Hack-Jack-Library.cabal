@@ -29,6 +29,8 @@ library
                      , Data.Jack.Token.ConversionTo.ByteString.XML
                      , Data.Jack.Token.ConversionTo.JackClass
                      , Data.Jack.Token.Model
+                     , Data.Output.Model
+                     , Data.Source.Model
                      , Data.VM.ConversionTo.ASMCode
                      , Data.VM.ConversionTo.ByteString
                      , Data.VM.ConversionTo.MachineCode
@@ -38,7 +40,7 @@ library
                      , Parser.MachineCode
                      , Parser.Token
                      , Parser.VM
-  other-modules:       Data.Source.Model
+  -- other-modules:       
   -- other-extensions:
   ghc-options:         -Wall -fwarn-tabs
   build-depends:       base >=4.11 && <4.12
@@ -46,6 +48,8 @@ library
                      , attoparsec >= 0.13.2.2 && < 1.0
                      , containers >= 0.5.11.0 && < 1.0
                      , transformers >= 0.5.5 && < 1.0
+                     , filepath >= 1.4 && < 2.0
+
 
 
   hs-source-dirs:      src

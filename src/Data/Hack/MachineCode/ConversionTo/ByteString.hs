@@ -3,16 +3,21 @@
 module Data.Hack.MachineCode.ConversionTo.ByteString (convert) where
 
 import qualified Data.Hack.MachineCode.Model as MC
+import qualified Data.Output.Model as OUT
 
 import qualified Data.ByteString.Char8 as BS (ByteString, pack)
 import Text.Printf (printf)
 
 
-convert :: MC.HackFile -> BS.ByteString
-convert [] = ""
-convert (l:ls) =    convertInstruction (MC.instruction l)
-               <>   "\n"
-               <>   convert ls
+convert :: MC.File -> OUT.OutputFile
+convert MC.File { MC.program = mcProg
+                , MC.path    = mcPath} =
+    OUT.OutputFile { OUT.outputProgram = go mcProg
+                   , OUT.path          = mcPath }
+    where   go [] = ""
+            go (l:ls) =    convertInstruction (MC.instruction l)
+                        <>   "\n"
+                        <>   go ls
                
 convertInstruction :: MC.Instruction -> BS.ByteString
                             -- prints out address as 16bit binary, first bit always 0

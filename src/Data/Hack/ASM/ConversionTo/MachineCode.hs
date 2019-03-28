@@ -5,15 +5,18 @@ module Data.Hack.ASM.ConversionTo.MachineCode (convert) where
 import qualified Data.Hack.ASM.Model as ASM
 import qualified Data.Hack.MachineCode.Model as MC
 
-convert :: ASM.Program -> MC.HackFile
-convert [] = []
-convert prog = go prog 0
-    where go []     _   = []
-          go (l:ls) ln  =
-            MC.HackLine { MC.lineNumber    = ln
-                        , MC.instruction   = convertInstruction (ASM.instruction l)
-                        }
-            : go ls (ln+1)
+import System.FilePath (addExtension, dropExtension)
+
+convert :: ASM.File -> MC.File
+convert ASM.File { ASM.program = asmProg
+                 , ASM.path    = asmPath } =
+        MC.File { MC.program = go asmProg MC.initLineNumber
+                , MC.path    = addExtension (dropExtension asmPath) "hack" } 
+        where   go []     _   = []
+                go (l:ls) lNum  =
+                        MC.Line { MC.lineNumber    = lNum
+                                , MC.instruction   = convertInstruction (ASM.instruction l) }
+                        : go ls (lNum+1)
 
 convertInstruction :: ASM.Instruction -> MC.Instruction
 convertInstruction (ASM.A i) = MC.A i

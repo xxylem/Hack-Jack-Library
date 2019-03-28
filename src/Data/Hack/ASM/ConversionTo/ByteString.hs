@@ -3,22 +3,22 @@
 module Data.Hack.ASM.ConversionTo.ByteString where
 
 import qualified Data.Hack.ASM.Model as ASM
+import qualified Data.Output.Model as OUT
 
 import qualified Data.ByteString.Char8 as BS (ByteString, pack)
 
-class Convert a where
-    convert :: a -> BS.ByteString
+convert :: ASM.File -> OUT.OutputFile
+convert ASM.File { ASM.program = asmProg
+                 , ASM.path    = asmPath } =
+    OUT.OutputFile { OUT.outputProgram = go asmProg 
+                   , OUT.path          = asmPath }
+    where   go [] = ""
+            go (l:ls) = convertLine l <> "\n" <> go ls
 
-instance Convert ASM.Program where
-    convert [] = ""
-    convert (l:ls) = convert l <> "\n" <> convert ls
-
-instance Convert ASM.Line where
-    convert line = convert $ ASM.instruction line
-
-instance Convert ASM.Instruction where
-    convert (ASM.A i) = "@" <> (BS.pack . show) i
-    convert ASM.C{ ASM.computation = c
-                 , ASM.destination = d
-                 , ASM.jump        = j } = 
-                    undefined
+convertLine :: ASM.Line -> BS.ByteString
+convertLine ASM.Line { ASM.instruction = asmIn } = go asmIn
+    where   go (ASM.A i) = "@" <> (BS.pack . show) i
+            go ASM.C{ ASM.computation = c
+                    , ASM.destination = d
+                    , ASM.jump        = j } = 
+                        undefined

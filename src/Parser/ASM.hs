@@ -10,16 +10,18 @@ import Control.Monad.Trans.State
 import Data.Attoparsec.ByteString.Char8 (Parser, skipSpace, char, decimal, manyTill',
                                         anyChar, eitherP, endOfInput, string, parseOnly)
 import Data.Attoparsec.Combinator (lookAhead)
-import qualified Data.ByteString.Char8 as BS
 import qualified Data.Map.Strict as Map
 
-parseASMFile :: BS.ByteString -> Either ParseError ASM.Program
-parseASMFile bs = do
-    let noCommsFile = removeCommentsAndEmptyLines $ S.toUnparsedFile 1 bs
+parseASMFile :: S.UnparsedFile -> Either ParseError ASM.File
+parseASMFile S.UnparsedFile { S.unparsedProgram = srcProg
+                            , S.path            = srcPath } = do
+    let noCommsFile = removeCommentsAndEmptyLines srcProg
         (noSymsFile, st) = runState (moveLabelsToSymbolTable noCommsFile) initState
-    evalState (runParseInstructionLines noSymsFile) st
+    asmProg <- evalState (runParseInstructionLines noSymsFile) st
+    return $ ASM.File { ASM.program = asmProg
+                      , ASM.path    = srcPath }
 
-removeCommentsAndEmptyLines :: S.UnparsedFile -> S.UnparsedFile
+removeCommentsAndEmptyLines :: S.UnparsedProgram -> S.UnparsedProgram
 removeCommentsAndEmptyLines = filter (not . runParseIsEmptyLineOrComment)
             where runParseIsEmptyLineOrComment l =
                     case parseOnly parseComment (S.code l) of
@@ -135,7 +137,7 @@ runParseSymbol l = do
                                            , line=l })
 
 
-runParseInstructionLines :: S.UnparsedFile -> State ParseState (Either ParseError ASM.Program)
+runParseInstructionLines :: S.UnparsedProgram -> State ParseState (Either ParseError ASM.Program)
 runParseInstructionLines [] = return $ Right []
 runParseInstructionLines (l:ls) = do
     parsedLine <- runParseInstructionLine l
@@ -145,7 +147,7 @@ runParseInstructionLines (l:ls) = do
                          return $ (:) <$> Right instr <*> instrs
         (Left err)    -> return $ Left err
 
-moveLabelsToSymbolTable :: S.UnparsedFile -> State ParseState S.UnparsedFile
+moveLabelsToSymbolTable :: S.UnparsedProgram -> State ParseState S.UnparsedProgram
 moveLabelsToSymbolTable [] = return []
 moveLabelsToSymbolTable (l:ls) = do
     st <- get

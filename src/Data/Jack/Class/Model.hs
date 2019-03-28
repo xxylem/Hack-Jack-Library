@@ -2,6 +2,8 @@ module Data.Jack.Class.Model where
 
 import qualified Data.ByteString.Char8 as BS (ByteString)
 
+data File = File { jackClass :: JackClass
+                 , path      :: FilePath }
 
 data JackClass =
     JackClass ClassName
