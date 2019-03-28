@@ -27,6 +27,7 @@ convertInstruction MC.C{ MC.computation = c
                        , MC.jump        = j } =
     BS.pack $ 
         -- prints out components of C instruction in binary format with leading zeroes
-        printf "%07b" c 
+        "111"
+    <>  printf "%07b" c 
     <>  printf "%03b" d
     <>  printf "%03b" j
