@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                Hack-Jack-Library
-version:             0.1.0.6
+version:             0.1.0.7
 -- synopsis:
 -- description:
 license:             BSD3
@@ -40,7 +40,7 @@ library
                      , Parser.MachineCode
                      , Parser.Token
                      , Parser.VM
-  -- other-modules:       
+  other-modules:       Parser.Error
   -- other-extensions:
   ghc-options:         -Wall -fwarn-tabs
   build-depends:       base >=4.11 && <4.12

@@ -4,6 +4,7 @@ module Parser.ASM where
 
 import qualified Data.Hack.ASM.Model as ASM
 import qualified Data.Source.Model as S
+import qualified Parser.Error as PE
 
 import Control.Applicative ((<|>))
 import Control.Monad.Trans.State
@@ -12,7 +13,7 @@ import Data.Attoparsec.ByteString.Char8 (Parser, skipSpace, char, decimal, manyT
 import Data.Attoparsec.Combinator (lookAhead)
 import qualified Data.Map.Strict as Map
 
-parseASMFile :: S.UnparsedFile -> Either ParseError ASM.File
+parseASMFile :: S.UnparsedFile -> Either PE.ParseError ASM.File
 parseASMFile S.UnparsedFile { S.unparsedProgram = srcProg
                             , S.path            = srcPath } = do
     let noCommsFile = removeCommentsAndEmptyLines srcProg
@@ -27,15 +28,6 @@ removeCommentsAndEmptyLines = filter (not . runParseIsEmptyLineOrComment)
                     case parseOnly parseComment (S.code l) of
                         (Right _) -> True
                         (Left _)  -> False
-
-data ErrorType =
-        InvalidLine
-    |   NoSymbol
-
-data ParseError = 
-    ParseError { errorType :: ErrorType
-            , message   :: String
-            , line      :: S.UnparsedLine}
 
 data ParseState = ParseState { nextAddressValue :: Integer 
                              , nextLineNumber   :: Integer
@@ -96,7 +88,7 @@ initSymbolTable =
 -- ====================================================================================== --
 
 -- Parses an instruction on one line, including @symbol instructions. 
-runParseInstructionLine :: S.UnparsedLine -> State ParseState (Either ParseError ASM.Line)
+runParseInstructionLine :: S.UnparsedLine -> State ParseState (Either PE.ParseError ASM.Line)
 runParseInstructionLine l = do
     st <- get
     case parseOnly parseInstruction (S.code l) of
@@ -111,7 +103,7 @@ runParseInstructionLine l = do
 -- is not an integer. If the symbol is found in the symbol table, returns an instruction
 -- with the resolvd address location. If the symbol isn't found, adds the symbol
 -- to the symbol table at the next available address.
-runParseSymbol :: S.UnparsedLine -> State ParseState (Either ParseError ASM.Line)
+runParseSymbol :: S.UnparsedLine -> State ParseState (Either PE.ParseError ASM.Line)
 runParseSymbol l = do
     st <- get
     let symTab = symbolTable st
@@ -132,12 +124,12 @@ runParseSymbol l = do
                                         return $ Right 
                                                 (ASM.Line { ASM.lineNumber = lNumber
                                                           , ASM.instruction = ASM.A aVal} )
-        (Left err)    -> return $ Left (ParseError { errorType=NoSymbol
-                                           , message=err
-                                           , line=l })
+        (Left err)    -> return $ Left (PE.ParseError   { PE.errorType=PE.NoSymbol
+                                                        , PE.message=err
+                                                        , PE.line=l } )
 
 
-runParseInstructionLines :: S.UnparsedProgram -> State ParseState (Either ParseError ASM.Program)
+runParseInstructionLines :: S.UnparsedProgram -> State ParseState (Either PE.ParseError ASM.Program)
 runParseInstructionLines [] = return $ Right []
 runParseInstructionLines (l:ls) = do
     parsedLine <- runParseInstructionLine l

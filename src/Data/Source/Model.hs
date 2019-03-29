@@ -5,10 +5,14 @@ import qualified Data.ByteString.Char8 as BS
 data UnparsedLine =
     UnparsedLine { lineNumber :: Integer
                  , code       :: BS.ByteString }
+                 deriving (Eq, Show)
+
 type UnparsedProgram = [UnparsedLine]
+
 data UnparsedFile =
     UnparsedFile { unparsedProgram :: UnparsedProgram
                  , path            :: FilePath }
+                 deriving (Eq, Show)
 
 
 toUnparsedFile :: FilePath -> Integer -> BS.ByteString -> UnparsedFile
