@@ -1,13 +1,15 @@
 module Data.VM.Model where
 
+import Control.Lens
 import qualified Data.ByteString.Char8 as BS (ByteString)
 
+data Line = Line { lineNumber :: Integer
+                 , instruction :: Instruction }
+type Program = [Line]
+data File = File { program    :: [Line]
+                 , path :: BS.ByteString }
 
-data VMFile = VMFile { lines    :: [VMLine]
-                     , fileName :: BS.ByteString 
-                     }
-
-data VMLine =
+data Instruction =
     AL_VM ArithLogicCommand
   | M_VM  MemoryAccessCommand
   | P_VM  ProgramFlowCommand
@@ -29,8 +31,7 @@ data ArithLogicCommand =
 data MemoryAccessCommand =
     MemCMD  { direction :: Direction
             , segment   :: Segment
-            , index     :: Integer
-            }
+            , index     :: Integer }
             deriving (Eq, Show)
 
 data Direction =

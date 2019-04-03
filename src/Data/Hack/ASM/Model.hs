@@ -1,5 +1,8 @@
 module Data.Hack.ASM.Model where
-    
+  
+import qualified Data.ByteString.Char8 as BS (ByteString)
+
+
 -- Data model for Hack instructions in ASM format.
 
 data Line = Line { lineNumber :: Integer
@@ -11,10 +14,10 @@ data File = File { program :: Program
 
 data Instruction =
     A { address     :: Integer}
+  | AL { addressLabel :: BS.ByteString }
   | C { computation :: Computation
       , destination :: Destination
-      , jump        :: Jump
-      }
+      , jump        :: Jump }
 
 data Computation =
     ZERO
