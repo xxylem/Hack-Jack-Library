@@ -13,11 +13,12 @@ data File = File { program :: Program
 
 
 data Instruction =
-    A { address     :: Integer}
-  | AL { addressLabel :: BS.ByteString }
-  | C { computation :: Computation
-      , destination :: Destination
-      , jump        :: Jump }
+    A { address       :: Integer}
+  | C { computation   :: Computation
+      , destination   :: Destination
+      , jump          :: Jump }
+  | L { label         :: BS.ByteString}
+  | S { addressSymbol :: BS.ByteString }
 
 data Computation =
     ZERO

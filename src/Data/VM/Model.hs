@@ -1,13 +1,12 @@
 module Data.VM.Model where
 
-import Control.Lens
 import qualified Data.ByteString.Char8 as BS (ByteString)
 
 data Line = Line { lineNumber :: Integer
                  , instruction :: Instruction }
 type Program = [Line]
 data File = File { program    :: [Line]
-                 , path :: BS.ByteString }
+                 , path :: FilePath }
 
 data Instruction =
     AL_VM ArithLogicCommand
