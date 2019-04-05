@@ -67,7 +67,8 @@ convertDestination d =
         ASM.A_DEST  -> "A"
         ASM.AM      -> "AM"
         ASM.AD      -> "AD"
-        ASM.AMD     -> "AMD")
+        ASM.AMD     -> "AMD"
+        ASM.NULL_DEST -> error "impossible program state reached")
     <> "="
 
 convertJump :: ASM.Jump -> BS.ByteString
@@ -81,4 +82,5 @@ convertJump j =
         ASM.JLT -> "JLT"
         ASM.JNE -> "JNE"
         ASM.JLE -> "JLE"
-        ASM.JMP -> "JMP")
+        ASM.JMP -> "JMP"
+        ASM.NULL_JUMP -> error "impossible program state reached")

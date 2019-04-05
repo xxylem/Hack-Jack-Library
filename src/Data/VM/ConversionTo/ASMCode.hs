@@ -7,7 +7,7 @@ import qualified Data.Hack.ASM.Model as ASM
 
 import Control.Monad.Trans.State
 import qualified Data.ByteString.Char8 as BS (pack)
-import System.FilePath (addExtension, dropExtension)
+import System.FilePath (dropExtension)
 
 data InFunctionState =
     Inside VM.Label
@@ -19,8 +19,7 @@ data ConversionState =
                     , nextLt            :: Integer
                     , nextReturn        :: Integer
                     , inFunctionState   :: InFunctionState
-                    , fileNameNoExt     :: FilePath
-                    , nextASMLineNumber :: Integer }
+                    , fileNameNoExt     :: FilePath }
 
 initState :: FilePath -> ConversionState
 initState fp = ConversionState { nextEq = 0

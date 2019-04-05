@@ -22,6 +22,6 @@ toUnparsedFile fp n bs =
     UnparsedFile { unparsedProgram = go n (BS.lines bs) 
                  , path            = fp }
         where   go _ [] = []
-                go n (l:ls) = 
-                    UnparsedLine { lineNumber=n, code = l } : go (n+1) ls
+                go n' (l:ls) = 
+                    UnparsedLine { lineNumber=n', code = l } : go (n'+1) ls
 

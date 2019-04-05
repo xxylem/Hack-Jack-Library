@@ -7,150 +7,43 @@ import qualified Data.Source.Model as S
 import qualified Parser.Error as PE
 
 import Control.Applicative ((<|>))
-import Control.Monad.Trans.State
 import Data.Attoparsec.ByteString.Char8 (Parser, skipSpace, char, decimal, manyTill',
                                         anyChar, eitherP, endOfInput, string, parseOnly)
 import Data.Attoparsec.Combinator (lookAhead)
-import qualified Data.Map.Strict as Map
+import qualified Data.ByteString.Char8 as BS (pack)
 
 parseASMFile :: S.UnparsedFile -> Either PE.ParseError ASM.File
 parseASMFile S.UnparsedFile { S.unparsedProgram = srcProg
                             , S.path            = srcPath } = do
-    let noCommsFile = removeCommentsAndEmptyLines srcProg
-        (noSymsFile, st) = runState (moveLabelsToSymbolTable noCommsFile) initState
-    asmProg <- evalState (runParseInstructionLines noSymsFile) st
-    return $ ASM.File { ASM.program = asmProg
-                      , ASM.path    = srcPath }
-
-removeCommentsAndEmptyLines :: S.UnparsedProgram -> S.UnparsedProgram
-removeCommentsAndEmptyLines = filter (not . runParseIsEmptyLineOrComment)
-            where runParseIsEmptyLineOrComment l =
-                    case parseOnly parseComment (S.code l) of
-                        (Right _) -> True
-                        (Left _)  -> False
-
-data ParseState = ParseState { nextAddressValue :: Integer 
-                             , nextLineNumber   :: Integer
-                             , symbolTable      :: SymbolTable
-                               }
-
-incNextAddValue :: State ParseState ()
-incNextAddValue = do
-    st <- get
-    put $ st { nextAddressValue = 1 + nextAddressValue st }
-incNextLineNumber :: State ParseState ()
-incNextLineNumber = do
-    st <- get
-    put $ st { nextLineNumber = 1 + nextLineNumber st }
-insertToSymbolTable :: Label -> AddressVal -> State ParseState ()
-insertToSymbolTable label aVal = do
-    st <- get
-    put $ st { symbolTable = Map.insert label aVal (symbolTable st) }
-
-
-type Label = String
-type AddressVal = Integer
-type SymbolTable = Map.Map Label AddressVal
-
-initState :: ParseState
-initState = ParseState { nextAddressValue = 16
-                            , nextLineNumber   = 0
-                            , symbolTable = initSymbolTable }
-
-initSymbolTable :: SymbolTable
-initSymbolTable =
-    Map.fromList [  ("SP",      0)
-                 ,  ("LCL",     1)
-                 ,  ("ARG",     2)
-                 ,  ("THIS",    3)
-                 ,  ("THAT",    4)
-                 ,  ("R0",      0)
-                 ,  ("R1",      1)
-                 ,  ("R2",      2)
-                 ,  ("R3",      3)
-                 ,  ("R4",      4)
-                 ,  ("R5",      5)
-                 ,  ("R6",      6)
-                 ,  ("R7",      7)
-                 ,  ("R8",      8)
-                 ,  ("R9",      9)
-                 ,  ("R10",     10)
-                 ,  ("R11",     11)
-                 ,  ("R12",     12)
-                 ,  ("R13",     13)
-                 ,  ("R14",     14)
-                 ,  ("R15",     15)
-                 ,  ("SCREEN",  16384)
-                 ,  ("KBD",     24576)
-                 ]
+        instructions <- runParseLines srcProg
+        return $ ASM.processASMInstructions srcPath instructions
 
 -- ====================================================================================== --
 
--- Parses an instruction on one line, including @symbol instructions. 
-runParseInstructionLine :: S.UnparsedLine -> State ParseState (Either PE.ParseError ASM.Line)
-runParseInstructionLine l = do
-    st <- get
+runParseLines :: S.UnparsedProgram -> Either PE.ParseError [ASM.Instruction]
+runParseLines [] = Right []
+runParseLines (l:ls) =
     case parseOnly parseInstruction (S.code l) of
-        (Right instr) -> do
-                     let lNumber = nextLineNumber st
-                     incNextLineNumber
-                     return $ Right (ASM.Line { ASM.lineNumber = lNumber
-                                              , ASM.instruction = instr })
-        (Left _) -> runParseSymbol l
-
--- Takes an unparsed line and attempts to parse a @symbol instruction, where symbol
--- is not an integer. If the symbol is found in the symbol table, returns an instruction
--- with the resolvd address location. If the symbol isn't found, adds the symbol
--- to the symbol table at the next available address.
-runParseSymbol :: S.UnparsedLine -> State ParseState (Either PE.ParseError ASM.Line)
-runParseSymbol l = do
-    st <- get
-    let symTab = symbolTable st
-    case parseOnly parseAddressSymbol (S.code l) of
-        (Right sym) -> case Map.lookup sym symTab of
-                            Just val -> do
-                                        let lNumber = nextLineNumber st
-                                        incNextLineNumber
-                                        return $ Right 
-                                                (ASM.Line { ASM.lineNumber = lNumber
-                                                          , ASM.instruction = ASM.A val })
-                            Nothing  -> do
-                                        let aVal    = nextAddressValue st
-                                            lNumber = nextLineNumber st
-                                        insertToSymbolTable sym aVal
-                                        incNextAddValue
-                                        incNextLineNumber
-                                        return $ Right 
-                                                (ASM.Line { ASM.lineNumber = lNumber
-                                                          , ASM.instruction = ASM.A aVal} )
-        (Left err)    -> return $ Left (PE.ParseError   { PE.errorType=PE.NoSymbol
-                                                        , PE.message=err
-                                                        , PE.line=l } )
+        Right i -> (:) <$> Right i <*> runParseLines ls
+        Left  err -> case parseOnly parseComment (S.code l) of
+                        Right _ -> runParseLines ls
+                        Left err' -> Left $ PE.ParseError { PE.message = err <> err' 
+                                                          , PE.line    = l }
 
 
-runParseInstructionLines :: S.UnparsedProgram -> State ParseState (Either PE.ParseError ASM.Program)
-runParseInstructionLines [] = return $ Right []
-runParseInstructionLines (l:ls) = do
-    parsedLine <- runParseInstructionLine l
-    case parsedLine of
-        (Right instr) -> do
-                         instrs <- runParseInstructionLines ls
-                         return $ (:) <$> Right instr <*> instrs
-        (Left err)    -> return $ Left err
+-- Checks for A instructions, C instructions and labels for one line of code
+-- Also checks that the rest of the line is valid (i.e. contains only empty space, a comment,
+-- or is the end of the line).
+parseInstruction :: Parser ASM.Instruction
+parseInstruction = 
+        skipSpace 
+    >>  (   parseComputationInstruction
+        <|> parseAddressInstruction
+        <|> parseAddressSymbol
+        <|> parseAddressLabel
+        )
+    <*  parseComment
 
-moveLabelsToSymbolTable :: S.UnparsedProgram -> State ParseState S.UnparsedProgram
-moveLabelsToSymbolTable [] = return []
-moveLabelsToSymbolTable (l:ls) = do
-    st <- get
-    case parseOnly parseAddressLabel (S.code l) of
-        Right label -> do
-                       insertToSymbolTable label (nextLineNumber st)
-                       moveLabelsToSymbolTable ls
-        Left  _     -> do
-                       incNextLineNumber
-                       ls' <- moveLabelsToSymbolTable ls
-                       return $ l : ls'
-                
 -- ====================================================================================== --
 -- A Instructions --
 
@@ -164,30 +57,42 @@ parseAddressInstruction =
 
 -- Returns the symbol string from an A instruction containing a symbol/label ref
 -- e.g. @LOOP, @counter
-parseAddressSymbol :: Parser String
-parseAddressSymbol =
-        skipSpace
-    >>  char '@'
-    >>  manyTill' anyChar   (lookAhead  (eitherP    endOfInput
+parseAddressSymbol :: Parser ASM.Instruction
+parseAddressSymbol = do
+    skipSpace
+    _ <- char '@'
+    sym <- manyTill' anyChar   (lookAhead  (eitherP    endOfInput
                                                     (       char ' '
                                                         <|> char '/'
-                                                        <|> char '\r'
-                                                    )
-                                        )
-                            )
-    <*  parseComment
+                                                        <|> char '\r' )))
+    parseComment
+    return $ ASM.S $ BS.pack sym
 
 -- Returns the label (as a string) from a label declaration
 -- e.g. (LOOP), (END)
-parseAddressLabel :: Parser String
-parseAddressLabel =
-        skipSpace
-    >>  char '('
-    >>  manyTill' anyChar (char ')') 
-    <*  parseComment
+parseAddressLabel :: Parser ASM.Instruction
+parseAddressLabel = do
+    skipSpace
+    _   <- char '('
+    lb  <- manyTill' anyChar (char ')') 
+    parseComment
+    return $ ASM.L $ BS.pack lb
 
 -- ====================================================================================== --
 -- C Instructions --
+
+-- Combines the parsers into one that deals with the full C instruction
+-- e.g. parses all parts of "M=A+1;JMP" into their relevant components and combines them
+-- to a full Instruction.
+parseComputationInstruction :: Parser ASM.Instruction
+parseComputationInstruction = do
+    skipSpace
+    dest <- parseDestination
+    skipSpace
+    comp <- parseComputation
+    skipSpace
+    jump <- parseJump
+    return $ ASM.C { ASM.computation=comp, ASM.destination=dest, ASM.jump=jump }
 
 -- Parses the <<computation>> section of the C instruction.
 -- e.g. the "A+1" in the instruction "M=A+1;JMP"
@@ -260,19 +165,6 @@ parseJump =
         )
     <|> return ASM.NULL_JUMP
 
--- Combines the above parsers into one that deals with the full C instruction
--- e.g. parses all parts of "M=A+1;JMP" into their relevant components and combines them
--- to a full Instruction.
-parseComputationInstruction :: Parser ASM.Instruction
-parseComputationInstruction = do
-    skipSpace
-    dest <- parseDestination
-    skipSpace
-    comp <- parseComputation
-    skipSpace
-    jump <- parseJump
-    return $ ASM.C { ASM.computation=comp, ASM.destination=dest, ASM.jump=jump }
-
 -- ====================================================================================== --
 
 -- Checks for comments, whitespace, or end of line, e.g. "   //this is a comment"
@@ -282,14 +174,3 @@ parseComment =
     >>  (   (string "//" >> return ())
         <|> endOfInput
         )
-
--- Checks for A instructions (without labels) and C instructions for one line of code
--- Also checks that the rest of the line is valid (i.e. contains only empty space, a comment,
--- or is the end of the line).
-parseInstruction :: Parser ASM.Instruction
-parseInstruction = 
-        skipSpace 
-    >>  (   parseAddressInstruction
-        <|> parseComputationInstruction
-        )
-    <*  parseComment

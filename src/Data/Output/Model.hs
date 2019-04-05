@@ -8,5 +8,5 @@ data OutputFile =
 
 writeOutputFile :: OutputFile -> IO ()
 writeOutputFile OutputFile { outputProgram = outProg
-                           , path          = path } =
-    BS.writeFile path outProg
+                           , path          = path' } =
+    BS.writeFile path' outProg
