@@ -28,38 +28,25 @@ initState fp = ConversionState { nextEq = 0
                             , nextLt = 0
                             , nextReturn = 0
                             , inFunctionState = Outside
-                            , fileNameNoExt = dropExtension fp
-                            , nextASMLineNumber = 0 }
+                            , fileNameNoExt = dropExtension fp }
                     
 convert :: VM.File -> ASM.File
 convert VM.File { VM.program = vmProg
                 , VM.path    = vmPath } =
-    ASM.File { ASM.program = evalState (convertVMLines vmProg)
-                                        (initState vmPath)
-             , ASM.path = addExtension (dropExtension vmPath) "asm" }
+    ASM.processASMInstructions  vmPath  
+                                (evalState (convertVMLines vmProg)
+                                            (initState vmPath))
 
-
-convertVMLines :: [VM.Line] -> State ConversionState [ASM.Line]
+convertVMLines :: [VM.Line] -> State ConversionState [ASM.Instruction]
 convertVMLines [] = return []
 convertVMLines (l:ls) = do
     asmL <- convertVMLine l
     asmLs <- convertVMLines ls
     return (asmL <> asmLs)
 
-convertVMLine :: VM.Line -> State ConversionState [ASM.Line]
-convertVMLine VM.Line { VM.instruction = instr } = do
-    asmLns <- convertCMD instr
-    addLineNumbers asmLns
+convertVMLine :: VM.Line -> State ConversionState [ASM.Instruction]
+convertVMLine VM.Line { VM.instruction = instr } = convertCMD instr
 
-addLineNumbers :: [ASM.Instruction] -> State ConversionState [ASM.Line]
-addLineNumbers [] = return []
-addLineNumbers (l:ls) = do
-    st <- get
-    let asmLineNmbr = nextASMLineNumber st
-    put $ st { nextASMLineNumber = asmLineNmbr + 1 }
-    restOfLines <- addLineNumbers ls
-    return $ ( ASM.Line { ASM.lineNumber = asmLineNmbr
-                      , ASM.instruction = l } ) : restOfLines
 
 class ConvertCommand c where
     convertCMD :: c -> State ConversionState [ASM.Instruction]

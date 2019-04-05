@@ -53,10 +53,9 @@ type AddressVal = Integer
 type SymbolTable = Map.Map Label AddressVal
 
 initState :: ParseState
-initState = ParseState { nextAddressValue=16
-                       , nextLineNumber=0
-                       , symbolTable=initSymbolTable
-                       }
+initState = ParseState { nextAddressValue = 16
+                            , nextLineNumber   = 0
+                            , symbolTable = initSymbolTable }
 
 initSymbolTable :: SymbolTable
 initSymbolTable =
