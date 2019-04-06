@@ -12,18 +12,21 @@ convert ASM.File { ASM.program = asmProg
                  , ASM.path    = asmPath } =
     OUT.OutputFile { OUT.outputProgram = go asmProg 
                    , OUT.path          = asmPath }
-    where   go [] = ""
+    where   go [] = "\n"
             go (l:ls) = convertLine l <> "\n" <> go ls
 
 convertLine :: ASM.Line -> BS.ByteString
 convertLine ASM.Line { ASM.instruction = asmIn } = go asmIn
-    where   go (ASM.A i) = "@" <> (BS.pack . show) i
+    where   go (ASM.A i) = "\t@" <> (BS.pack . show) i
             go ASM.C{ ASM.computation = c
                     , ASM.destination = d
                     , ASM.jump        = j } = 
-                            convertDestination d
+                            "\t"
+                        <>  convertDestination d
                         <>  convertComputation c
                         <>  convertJump j
+            go (ASM.S sym) = "\t@" <> sym
+            go (ASM.L lb) = "(" <> lb <> ")"
 
 convertComputation :: ASM.Computation -> BS.ByteString
 convertComputation c =
