@@ -21,8 +21,8 @@ convertLine ASM.Line { ASM.instruction = asmIn } = go asmIn
             go ASM.C{ ASM.computation = c
                     , ASM.destination = d
                     , ASM.jump        = j } = 
-                            convertComputation c
-                        <>  convertDestination d
+                            convertDestination d
+                        <>  convertComputation c
                         <>  convertJump j
 
 convertComputation :: ASM.Computation -> BS.ByteString

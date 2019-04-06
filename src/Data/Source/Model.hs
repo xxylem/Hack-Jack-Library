@@ -14,7 +14,6 @@ data UnparsedFile =
                  , path            :: FilePath }
                  deriving (Eq, Show)
 
-
 toUnparsedFile :: FilePath -> Integer -> BS.ByteString -> UnparsedFile
 toUnparsedFile fp n bs =
     -- Converts a ByteString to UnparsedFile format. Splits the ByteString by Line and

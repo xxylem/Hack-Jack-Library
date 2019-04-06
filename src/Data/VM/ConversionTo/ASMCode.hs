@@ -28,13 +28,43 @@ initState fp = ConversionState { nextEq = 0
                             , nextReturn = 0
                             , inFunctionState = Outside
                             , fileNameNoExt = dropExtension fp }
-                    
-convert :: VM.File -> ASM.File
-convert VM.File { VM.program = vmProg
-                , VM.path    = vmPath } =
-    ASM.processASMInstructions  vmPath  
-                                (evalState (convertVMLines vmProg)
-                                            (initState vmPath))
+
+initCode :: State ConversionState [ASM.Instruction]
+initCode = do
+    sysInit <- convertCMD (VM.CALL { VM.label = "Sys.init"
+                                   , VM.nArgs = 0 } )
+    return $ [  ASM.A 256
+             ,  ASM.C ASM.A_COMP ASM.D_DEST ASM.NULL_JUMP
+             ,  ASM.S "SP"
+             ,  ASM.C ASM.D_COMP ASM.M_DEST ASM.NULL_JUMP ]
+             <> sysInit
+
+convertDirectory :: FilePath -> [VM.File] -> ASM.File
+convertDirectory dirName fs =
+    let (initInstrs, st) = runState initCode (initState dirName)
+        restInstrs = evalState (convertFilesToInstructions fs) st
+    in ASM.makeFileFromInstructions dirName (initInstrs <> restInstrs)
+
+convertSingleFile :: VM.File -> ASM.File
+convertSingleFile vmFile@VM.File { VM.path    = vmPath } =
+    let (initInstrs, st) = runState initCode (initState vmPath)
+        restInstrs = evalState (convertFileToInstructions vmFile) st
+    in ASM.makeFileFromInstructions vmPath (initInstrs <> restInstrs)
+        
+
+convertFilesToInstructions :: [VM.File] -> State ConversionState [ASM.Instruction]
+convertFilesToInstructions [] = return []
+convertFilesToInstructions (f:fs) = do
+    f' <- convertFileToInstructions f
+    fs' <- convertFilesToInstructions fs
+    return $ f' <> fs'
+
+convertFileToInstructions :: VM.File -> State ConversionState [ASM.Instruction]
+convertFileToInstructions VM.File { VM.program = vmProg
+                              , VM.path    = vmPath } = do 
+    st <- get
+    put $ st { fileNameNoExt = dropExtension vmPath }
+    convertVMLines vmProg
 
 convertVMLines :: [VM.Line] -> State ConversionState [ASM.Instruction]
 convertVMLines [] = return []
@@ -398,8 +428,7 @@ instance ConvertCommand VM.ProgramFlowCommand where
         let funSt = inFunctionState st
             label = case funSt of
                         Inside funName -> funName <> "$" <> lb
-                        Outside        -> error ("impossible program state reached in convertCMD"
-                                                <> show (VM.GOTO lb))
+                        Outside        -> lb
         return  [   ASM.S label 
                 ,   ASM.C ASM.ZERO ASM.NULL_DEST ASM.JMP ]
 
@@ -408,8 +437,7 @@ instance ConvertCommand VM.ProgramFlowCommand where
         let funSt = inFunctionState st
             label = case funSt of
                         Inside funName -> funName <> "$" <> lb
-                        Outside        -> error ("impossible program state reached in convertCMD"
-                                                <> show (VM.IF_GOTO lb))
+                        Outside        -> lb
         return  [   ASM.S "SP"
                 ,   ASM.C ASM.M_MINUS_1 ASM.AM ASM.NULL_JUMP
                 ,   ASM.C ASM.M_COMP ASM.D_DEST ASM.NULL_JUMP
@@ -419,7 +447,9 @@ instance ConvertCommand VM.ProgramFlowCommand where
 
 instance ConvertCommand VM.FunctionCommand where
     convertCMD VM.FUN { VM.label = label
-                      , VM.nVars = nVars } =
+                      , VM.nVars = nVars } = do
+        st <- get
+        put $ st { inFunctionState = Inside label }
         let nPush0 0 = []
             nPush0 n =  [   ASM.S "0"
                         ,   ASM.C ASM.A_COMP ASM.D_DEST ASM.NULL_JUMP
@@ -428,7 +458,7 @@ instance ConvertCommand VM.FunctionCommand where
                         ,   ASM.C ASM.D_COMP ASM.A_DEST ASM.NULL_JUMP
                         ,   ASM.S "SP"
                         ,   ASM.C ASM.M_PLUS_1 ASM.M_DEST ASM.NULL_JUMP ]
-                        <>  nPush0 (n-1) in
+                        <>  nPush0 (n-1)
         return  $ ASM.L label : nPush0 nVars
 
     convertCMD VM.CALL { VM.label = label 
@@ -503,7 +533,9 @@ instance ConvertCommand VM.FunctionCommand where
                 ,   ASM.C ASM.ZERO ASM.NULL_DEST ASM.JMP
                 ,   ASM.L retAddLabel ]
 
-    convertCMD VM.RETURN =
+    convertCMD VM.RETURN = do
+        st <- get
+        put $ st { inFunctionState = Outside }
         return  [   --FRAME = LCL
                     ASM.S "LCL"
                 ,   ASM.C ASM.M_COMP ASM.D_DEST ASM.NULL_JUMP

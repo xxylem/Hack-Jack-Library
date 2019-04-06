@@ -16,7 +16,7 @@ parseASMFile :: S.UnparsedFile -> Either PE.ParseError ASM.File
 parseASMFile S.UnparsedFile { S.unparsedProgram = srcProg
                             , S.path            = srcPath } = do
         instructions <- runParseLines srcProg
-        return $ ASM.processASMInstructions srcPath instructions
+        return $ ASM.makeFileFromInstructions srcPath instructions
 
 -- ====================================================================================== --
 
