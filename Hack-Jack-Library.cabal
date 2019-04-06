@@ -36,7 +36,6 @@ library
                      , Data.VM.ConversionTo.MachineCode
                      , Data.VM.Model
                      , Parser.ASM
-                     , Parser.JackClass
                      , Parser.MachineCode
                      , Parser.Token
                      , Parser.VM

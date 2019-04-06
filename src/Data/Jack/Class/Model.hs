@@ -5,16 +5,19 @@ import qualified Data.ByteString.Char8 as BS (ByteString)
 data File = File { jackClass :: JackClass
                  , path      :: FilePath }
 
+newtype Identifier = Identifier BS.ByteString
+                    deriving (Eq, Show)
+
 data JackClass =
-    JackClass ClassName
-              [ClassVarDec]
-              [SubroutineDec]
+    JackClass { className       :: Identifier
+              , classVarDecs    :: [ClassVarDec]
+              , subroutineDecs  :: [SubroutineDec] }
               deriving (Eq, Show)
 
 data ClassVarDec =
-    ClassVarDec ClassVarKind
-                JackType
-                [VarName]
+    ClassVarDec { classVarKind :: ClassVarKind
+                , jackType     :: JackType
+                , varNames     :: [Identifier] }
                 deriving (Eq, Show)
 
 data ClassVarKind =
@@ -23,11 +26,11 @@ data ClassVarKind =
   deriving (Eq, Show)
 
 data SubroutineDec =
-    SubroutineDec   SubroutineKind
-                    SubroutineType
-                    SubroutineName
-                    [Parameter]
-                    SubroutineBody
+    SubroutineDec { subroutineKind :: SubroutineKind
+                  , subroutineType :: SubroutineType
+                  , subroutineName :: Identifier
+                  , parameters     :: [Parameter]
+                  , subroutineBody :: SubroutineBody }
                     deriving (Eq, Show)
 
 data SubroutineKind =
@@ -42,7 +45,7 @@ data SubroutineType =
   deriving (Eq, Show)
 
 data Parameter =
-    Param JackType VarName
+    Param JackType Identifier
     deriving (Eq, Show)
 
 data SubroutineBody =
@@ -50,14 +53,14 @@ data SubroutineBody =
     deriving (Eq, Show)
 
 data VarDec =
-    VarDec JackType [VarName]
+    VarDec JackType [Identifier]
     deriving (Eq, Show)
 
 data JackType =
     IntType
   | CharType
   | BoolType
-  | ClassType ClassName
+  | ClassType Identifier
   deriving (Eq, Show)
 
 data Statement =
@@ -69,28 +72,28 @@ data Statement =
   deriving (Eq, Show)
 
 data LetStatementName =
-    LSV VarName
-  | LSA EArrayExp
+    LSV Identifier
+  | LSA ArrayExp
   deriving (Eq, Show)
 
 data Expression =
     ESingleTerm Term
-  | ETermOpTerm      Term Op Term
+  | ETermOpTerm { lTerm :: Term
+                , op    :: Op
+                , rTerm :: Term }
   deriving (Eq, Show)
 
 data Term =
     TIntegerConstant Integer
   | TStringConstant BS.ByteString
   | TKeywordConstant EKeywordConstant
-  | TVarName VarName
-  | TArrayExp EArrayExp
+  | TVarName Identifier
+  | TArrayExp ArrayExp
   | TSubroutineCall SubroutineCall
   | TParenExpression Expression
   | TUnaryOp UnaryOp Term
   deriving (Eq, Show)
 
-newtype VarName = VarName BS.ByteString
-    deriving (Eq, Show)
 
 data EKeywordConstant =
     EKConTrue
@@ -99,20 +102,22 @@ data EKeywordConstant =
   | EKConThis
   deriving (Eq, Show)
 
-data EArrayExp =
-    EArrayExp VarName Expression
-    deriving (Eq, Show)
-
-newtype SubroutineName = SubroutineName BS.ByteString
-    deriving (Eq, Show)
-newtype ClassName = ClassName BS.ByteString
+data ArrayExp =
+    ArrayExp { arrayExpName :: Identifier
+             , arrayExp     :: Expression }
     deriving (Eq, Show)
 
 data SubroutineCall =
-    SR      SubroutineName [Expression]
-  | SRCN    ClassName SubroutineName [Expression]
-  | SRVN    VarName SubroutineName [Expression]
+    SR      BasicSRCall
+  | SRCN    { srcnClName :: Identifier
+            , srcnSR     :: BasicSRCall }
+  | SRVN    { srvnVName  :: Identifier
+            , srvnSR     :: BasicSRCall }
   deriving (Eq, Show)
+
+data BasicSRCall = BasicSRCall { srName :: Identifier
+                               , srExpressions :: [Expression] }
+                               deriving (Eq, Show)
 
 data Op =
     OpPlus
