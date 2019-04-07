@@ -7,7 +7,7 @@ data File = File { jackClass :: JackClass
                  deriving (Eq, Show)
 
 newtype Identifier = Identifier BS.ByteString
-                    deriving (Eq, Show)
+                    deriving (Ord, Eq, Show)
 
 data JackClass =
     JackClass { className       :: Identifier
