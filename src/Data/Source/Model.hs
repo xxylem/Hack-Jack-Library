@@ -24,3 +24,10 @@ toUnparsedFile fp n bs =
                 go n' (l:ls) = 
                     UnparsedLine { lineNumber=n', code = l } : go (n'+1) ls
 
+data UnparsedBSFile = UnparsedBSFile { unparsedByteString :: BS.ByteString
+                                     , bsPath    :: FilePath }
+
+toUnparsedBSFile :: FilePath -> BS.ByteString -> UnparsedBSFile
+toUnparsedBSFile fp bs = UnparsedBSFile { unparsedByteString = bs
+                                        , bsPath               = fp }
+
