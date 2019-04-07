@@ -21,7 +21,10 @@ class ToXML a where
     toXML :: a -> BS.ByteString
 
 convertTokens :: [TK.Token] -> BS.ByteString
-convertTokens = foldr ((<>) . toXML) ""
+convertTokens tks = 
+        "<tokens>\n"
+    <>  foldr ((<>) . toXML) "" tks 
+    <> "</tokens>\n"
 
 instance ToXML TK.Keyword where
     toXML t =
@@ -75,21 +78,21 @@ instance ToXML TK.Token where
     toXML (TK.KW kw) = 
             "<keyword> "
         <>  toXML kw
-        <>  " </keyword>"
+        <>  " </keyword>\n"
     toXML (TK.SY sy) = 
             "<symbol> "
         <>  toXML sy
-        <>  " </symbol>"
+        <>  " </symbol>\n"
     toXML (TK.IC ic) = 
             "<integerConstant> "
         <>  (BS.pack . show) ic
-        <>  " </integerConstant>"
+        <>  " </integerConstant>\n"
     toXML (TK.SC sc) =
             "<stringConstant> "
         <>  sc
-        <>  " </stringConstant>"
+        <>  " </stringConstant>\n"
     toXML (TK.ID iden) =
             "<identifier> "
         <>  iden
-        <>  " </identifier>"
+        <>  " </identifier>\n"
 
