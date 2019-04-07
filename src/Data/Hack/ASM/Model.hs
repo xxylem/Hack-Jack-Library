@@ -7,9 +7,11 @@ import System.FilePath (addExtension, dropExtension)
 
 data Line = Line { lineNumber :: Integer
                  , instruction :: Instruction }
+                 deriving (Eq, Show)
 type Program = [Line]
 data File = File { program :: Program
                  , path    :: FilePath }
+                 deriving (Eq, Show)
 
 makeFileFromInstructions :: FilePath -> [Instruction] -> File
 makeFileFromInstructions fp is =
@@ -30,6 +32,7 @@ data Instruction =
       , jump          :: Jump }
   | L { label         :: BS.ByteString}
   | S { addressSymbol :: BS.ByteString }
+  deriving (Eq, Show)
 
 data Computation =
     ZERO
@@ -60,6 +63,7 @@ data Computation =
   | M_MINUS_D
   | D_AND_M
   | D_OR_M
+  deriving (Eq, Show)
 
 data Destination =
     NULL_DEST
@@ -70,6 +74,7 @@ data Destination =
   | AM
   | AD
   | AMD
+  deriving (Eq, Show)
 
 data Jump =
     NULL_JUMP
@@ -80,3 +85,4 @@ data Jump =
   | JNE
   | JLE
   | JMP
+  deriving (Eq, Show)

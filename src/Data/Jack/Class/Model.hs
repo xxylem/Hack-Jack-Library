@@ -4,6 +4,7 @@ import qualified Data.ByteString.Char8 as BS (ByteString)
 
 data File = File { jackClass :: JackClass
                  , path      :: FilePath }
+                 deriving (Eq, Show)
 
 newtype Identifier = Identifier BS.ByteString
                     deriving (Eq, Show)

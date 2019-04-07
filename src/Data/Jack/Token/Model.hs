@@ -4,6 +4,7 @@ import qualified Data.ByteString.Char8 as BS
 
 data File = File { program :: [Token]
                  , path    :: FilePath }
+                 deriving (Eq, Show)
 
 data Keyword =
     Class

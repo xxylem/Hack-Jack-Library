@@ -4,9 +4,11 @@ import qualified Data.ByteString.Char8 as BS (ByteString)
 
 data Line = Line { lineNumber :: Integer
                  , instruction :: Instruction }
+                 deriving (Eq, Show)
 type Program = [Line]
 data File = File { program    :: [Line]
                  , path :: FilePath }
+                 deriving (Eq, Show)
 
 data Instruction =
     AL_VM ArithLogicCommand
