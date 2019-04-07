@@ -14,17 +14,17 @@ type TokenParser a =
         [TK.Token]
     ->  Either (String, [TK.Token]) (a, [TK.Token])
 
-runParseJackClasses :: [TK.File] -> Either (String, [TK.Token]) [JC.File]
-runParseJackClasses [] = Right []
-runParseJackClasses (TK.File { TK.program = tkProg
+convertDirectory :: [TK.File] -> Either (String, [TK.Token]) [JC.File]
+convertDirectory [] = Right []
+convertDirectory (TK.File { TK.program = tkProg
                              , TK.path    = path}:fs) = do
-    jackClass <- runParseJackClass tkProg
-    jackClasses <- runParseJackClasses fs
+    jackClass <- convertSingleFile tkProg
+    jackClasses <- convertDirectory fs
     return (JC.File { JC.jackClass = jackClass
                     , JC.path      = path} :jackClasses)
 
-runParseJackClass :: [TK.Token] -> Either (String, [TK.Token]) JC.JackClass
-runParseJackClass f =
+convertSingleFile :: [TK.Token] -> Either (String, [TK.Token]) JC.JackClass
+convertSingleFile f =
         parseJackClass f
     >>= \(jackClass, _)
     ->  return jackClass
