@@ -60,11 +60,17 @@ declareArgVar (JC.VarDec t vns) =
     foldr (\ v -> (>>) (insertMethodEntry v t ARG)) (return ()) vns
 declareArgVars :: [JC.VarDec] -> State ConversionState ()
 declareArgVars = foldr ((>>) . declareArgVar) (return ())
-declareLocalVar :: JC.VarDec -> State ConversionState ()
+
+declareLocalVar :: JC.VarDec -> State ConversionState Int
 declareLocalVar (JC.VarDec t vns) =
-    foldr (\ v -> (>>) (insertMethodEntry v t VAR)) (return ()) vns
-declareLocalVars :: [JC.VarDec] -> State ConversionState ()
-declareLocalVars = foldr ((>>) . declareLocalVar) (return ())
+    foldr (\ v -> (>>) (insertMethodEntry v t VAR)) (return (length vns)) vns
+declareLocalVars :: [JC.VarDec] -> State ConversionState Int
+declareLocalVars [] = return 0
+declareLocalVars (v:vs) = do
+    n <- declareLocalVar v
+    ns <- declareLocalVars vs
+    return (n+ns)
+
 declareParameters :: [JC.Parameter] -> State ConversionState ()
 declareParameters = foldr ((>>) . declareParameter) (return ())
 declareParameter :: JC.Parameter -> State ConversionState ()
@@ -76,25 +82,23 @@ instance Convert JC.SubroutineDec where
                              , JC.subroutineType = t
                              , JC.subroutineName = nm
                              , JC.parameters = ps
-                             , JC.subroutineBody = b } = do
+                             , JC.subroutineBody =
+                                    JC.SubroutineBody vDecs ss } = do
         resetMethodSymbolTable
         declareParameters ps
+        numLocalVars <- declareLocalVars vDecs
         st <- get
         let fName = currentClassName st <> "." <> nm
-            nVars = toInteger $ length ps + (case k of
+            nVars = toInteger $ numLocalVars + (case k of
                                                 JC.SRMethod -> 1
                                                 _ -> 0)
-        b' <- convert b
+        ss' <- convertStatements ss
         return $    [VM.F_VM $ VM.FUN fName nVars]
                 <>   (case k of
                                 JC.SRFunction -> []
                                 _ -> undefined)
-                <>  b'   
+                <>  ss'   
 
-instance Convert JC.SubroutineBody where
-    convert (JC.SubroutineBody vDecs ss) = do
-        declareLocalVars vDecs
-        convertStatements ss
 
 convertStatements :: [JC.Statement] -> State ConversionState [VM.Instruction]
 convertStatements [] = return []
@@ -108,7 +112,12 @@ convertMBStatements Nothing = return []
 convertMBStatements (Just ss) = convertStatements ss
 
 instance Convert JC.Statement where
-    convert (JC.LetStatement nm e) = undefined
+    convert (JC.LetStatement nm e) = do
+        e' <- convert e
+        popV <- case nm of
+                    JC.LSV i -> popVar i
+                    _        -> undefined
+        return $ e' <> popV
     convert (JC.IfStatement c ss ess) = do
         cond <- convert c
         ifSs <- convertStatements ss
@@ -117,7 +126,7 @@ instance Convert JC.Statement where
         label2 <- takeNextLabel
 
         return $    cond
-                <>  [   VM.AL_VM VM.NEG
+                <>  [   VM.AL_VM VM.NOT
                     ,   VM.P_VM $ VM.IF_GOTO label1 ]
                 <>  ifSs
                 <>  [   VM.P_VM $ VM.GOTO label2
@@ -132,7 +141,7 @@ instance Convert JC.Statement where
         label2 <- takeNextLabel
         return $    [   VM.P_VM $ VM.LABEL label1 ]
                 <>  cond
-                <>  [   VM.AL_VM VM.NEG
+                <>  [   VM.AL_VM VM.NOT
                     ,   VM.P_VM $ VM.IF_GOTO label2 ]
                 <>  wSs
                 <>  [   VM.P_VM $ VM.GOTO label1
@@ -328,7 +337,9 @@ takeNextLabel = do
 resetMethodSymbolTable :: State ConversionState ()
 resetMethodSymbolTable = do
     st <- get
-    put $ st { metSymTab = initMethodSymbolTable }
+    put $ st { metSymTab = initMethodSymbolTable
+             , nextVarIndex = 0
+             , nextArgIndex = 0 }
 
 lookupMetSymTab :: JC.Identifier -> State ConversionState (Maybe MethodEntry)
 lookupMetSymTab i = MAP.lookup i . metSymTab <$> get
