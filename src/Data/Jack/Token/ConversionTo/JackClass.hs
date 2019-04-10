@@ -465,7 +465,7 @@ parseIdentifier :: TokenParser JC.Identifier
 parseIdentifier [] = Left ("expected input in parseIdentifier", [])
 parseIdentifier (t:ts) =
     case t of
-        (TK.ID i) -> Right (JC.Identifier i, ts)
+        (TK.ID i) -> Right (i, ts)
         _            -> Left ("failed parse in parseIdentifier", t:ts)
 
 parseSubroutineCallSimple :: TokenParser JC.SubroutineCall

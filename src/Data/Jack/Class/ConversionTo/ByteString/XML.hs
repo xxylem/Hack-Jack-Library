@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TypeSynonymInstances #-}
 
 module Data.Jack.Class.ConversionTo.ByteString.XML where
 
@@ -33,7 +33,7 @@ class ToXML a where
     toXML :: a -> BS.ByteString
 
 instance ToXML JC.Identifier where
-    toXML (JC.Identifier i) = identifierXML i
+    toXML = identifierXML
 
 instance ToXML JC.JackClass where
     toXML (JC.JackClass cName cvDecs srDecs) =
