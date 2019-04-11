@@ -85,18 +85,27 @@ instance Convert JC.SubroutineDec where
                              , JC.subroutineBody =
                                     JC.SubroutineBody vDecs ss } = do
         resetMethodSymbolTable
+        st <- get
+        case k of
+                JC.SRMethod -> declareArgVar (JC.VarDec
+                                                    (JC.ClassType $ currentClassName st) ["this"])
+                _           -> return ()
         declareParameters ps
         numLocalVars <- declareLocalVars vDecs
-        st <- get
         let fName = currentClassName st <> "." <> nm
-            nVars = toInteger $ numLocalVars + (case k of
-                                                JC.SRMethod -> 1
-                                                _ -> 0)
+            nVars = toInteger numLocalVars
         ss' <- convertStatements ss
         return $    [VM.F_VM $ VM.FUN fName nVars]
                 <>   (case k of
                                 JC.SRFunction -> []
-                                _ -> undefined)
+                                JC.SRConstructor ->
+                                    let nFieldVars = nextFieldIndex st in
+                                        [   VM.M_VM $ VM.MemCMD VM.PUSH VM.CONSTANT nFieldVars
+                                        ,   VM.F_VM $ VM.CALL "Memory.alloc" 1
+                                        ,   VM.M_VM $ VM.MemCMD VM.POP VM.POINTER 0 ]
+                                JC.SRMethod ->
+                                    [   VM.M_VM $ VM.MemCMD VM.PUSH VM.ARGUMENT 0
+                                    ,   VM.M_VM $ VM.MemCMD VM.POP VM.POINTER 0 ])
                 <>  ss'   
 
 
@@ -203,7 +212,7 @@ instance Convert JC.EKeywordConstant where
     convert JC.EKConNull =
         return [VM.M_VM $ VM.MemCMD VM.PUSH VM.CONSTANT 0 ]
     convert JC.EKConThis =
-        return [VM.M_VM $ VM.MemCMD VM.PUSH VM.THIS 0 ]
+        return [VM.M_VM $ VM.MemCMD VM.PUSH VM.POINTER 0 ]
 
 instance Convert JC.ArrayExp where
     convert JC.ArrayExp { JC.arrayExpName = nm 
@@ -217,8 +226,9 @@ instance Convert JC.SubroutineCall where
         let className = currentClassName st
             fName     = className <> "." <> snm
         es' <- convertExpressions es
-        return $    es'
-               <>   [   VM.F_VM $ VM.CALL fName (toInteger (length es)) ]
+        return $    [   VM.M_VM $ VM.MemCMD VM.PUSH VM.POINTER 0 ]
+               <>   es'
+               <>   [   VM.F_VM $ VM.CALL fName (toInteger (1 + length es)) ]
     convert JC.SRCN { JC.srcnClName = cnm
                     , JC.srcnSR     = 
                         bsrc@JC.BasicSRCall { JC.srName = snm
@@ -236,7 +246,7 @@ instance Convert JC.SubroutineCall where
         let fName = objType <> "." <> snm
         pushObj <- pushVar nm
         es' <- convertExpressions es
-        return $    pushObj
+        return $    pushObj   
                <>   es'
                <>   [   VM.F_VM $ VM.CALL fName (toInteger (1 + length es)) ]
 

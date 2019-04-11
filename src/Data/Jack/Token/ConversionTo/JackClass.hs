@@ -33,7 +33,7 @@ parseJackClass :: TokenParser JC.JackClass
 parseJackClass ts =
         skipClass ts
     >>= \(_, ts)
-    ->  parseIdentifier ts
+    ->  parseClassIdentifier ts
     >>= \(cName, ts)
     ->  skipLCurlyBracket ts
     >>= \(_, ts)
@@ -96,7 +96,7 @@ parseJackType ts =
     <|> (   skipBoolKw ts
         >>= \(_, ts)
         ->  return (JC.BoolType, ts))
-    <|> (   parseIdentifier ts
+    <|> (   parseClassIdentifier ts
         >>= \(className, ts)
         ->  return (JC.ClassType className, ts))
 
@@ -468,6 +468,14 @@ parseIdentifier (t:ts) =
         (TK.ID i) -> Right (i, ts)
         _            -> Left ("failed parse in parseIdentifier", t:ts)
 
+parseClassIdentifier :: TokenParser JC.Identifier
+parseClassIdentifier [] = Left ("expected input in parseClassIdentifier", [])
+parseClassIdentifier (t:ts) =
+    case t of
+        (TK.ID i) -> if isUpper (BS.head i) then Right (i, ts)
+                                else Left ("failed parse in parseClassIdentifier", t:ts)
+        _ -> Left ("failed parse in parseClassIdentifier", t:ts)
+
 parseSubroutineCallSimple :: TokenParser JC.SubroutineCall
 parseSubroutineCallSimple ts =
         parseIdentifier ts
@@ -486,7 +494,7 @@ parseSubroutineCallSimple ts =
 
 parseSubroutineCallClass :: TokenParser JC.SubroutineCall
 parseSubroutineCallClass ts =
-        parseIdentifier ts
+        parseClassIdentifier ts
     >>= \(className, ts)
     ->  skipFullStop ts
     >>= \(_, ts)
