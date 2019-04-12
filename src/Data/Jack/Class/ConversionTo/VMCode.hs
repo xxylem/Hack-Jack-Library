@@ -6,7 +6,8 @@ import qualified Data.Jack.Class.Model as JC
 import qualified Data.VM.Model as VM
 
 import Control.Monad.Trans.State
-import qualified Data.ByteString.Char8 as BS (ByteString, pack)
+import qualified Data.ByteString.Char8 as BS (ByteString, pack, unpack)
+import Data.Char (ord)
 import qualified Data.Map.Strict as MAP
 import System.FilePath (addExtension, dropExtension)
 
@@ -121,12 +122,25 @@ convertMBStatements Nothing = return []
 convertMBStatements (Just ss) = convertStatements ss
 
 instance Convert JC.Statement where
-    convert (JC.LetStatement nm e) = do
+    convert (JC.LetStatement (JC.LSV i) e) = do
         e' <- convert e
-        popV <- case nm of
-                    JC.LSV i -> popVar i
-                    _        -> undefined
+        popV <- popVar i
         return $ e' <> popV
+    convert (JC.LetStatement (JC.LSA JC.ArrayExp 
+                                        { JC.arrayExpName = aName
+                                        , JC.arrayExp     = aExp }) rhsExp ) = do
+        aName' <- pushVar aName
+        aExp'  <- convert aExp
+        rhsExp' <- convert rhsExp
+        return $    aName'
+               <>   aExp'
+               <>   [   VM.AL_VM VM.ADD ]
+               <>   rhsExp'
+               <>   [   VM.M_VM $ VM.MemCMD VM.POP VM.TEMP 0
+                    ,   VM.M_VM $ VM.MemCMD VM.POP VM.POINTER 1
+                    ,   VM.M_VM $ VM.MemCMD VM.PUSH VM.TEMP 0
+                    ,   VM.M_VM $ VM.MemCMD VM.POP VM.THAT 0 ]
+
     convert (JC.IfStatement c ss ess) = do
         cond <- convert c
         ifSs <- convertStatements ss
@@ -184,15 +198,18 @@ instance Convert JC.Expression where
 instance Convert JC.Term where
     convert (JC.TIntegerConstant n) =
         return [VM.M_VM $ VM.MemCMD VM.PUSH VM.CONSTANT n]
-    convert (JC.TStringConstant s) = undefined
-        -- let s' = show s
-        --     appendChars [] = []
-        --     appendChars (c:cs) = undefined -- TODO how do we build string constant?
-        -- in
-        -- return [ VM.M_VM $ VM.MemCMD VM.PUSH VM.CONSTANT (length s')
-        --        , VM.F_VM $ VM.CALL { VM.label = "String.new"
-        --                            , VM.nArgs = 1 } ]
-        --        <> appendChars s'
+    convert (JC.TStringConstant s) = do
+        let s' = BS.unpack s
+            appendChars [] = []
+            appendChars (c:cs) =
+                [   VM.M_VM $ VM.MemCMD VM.PUSH VM.CONSTANT (toInteger $ ord c)
+                ,   VM.F_VM $ VM.CALL { VM.label = "String.appendChar"
+                                      , VM.nArgs = 2 } ]
+                <> appendChars cs
+        return $    [   VM.M_VM $ VM.MemCMD VM.PUSH VM.CONSTANT (toInteger $ length s')
+                    ,   VM.F_VM $ VM.CALL { VM.label = "String.new"
+                                   , VM.nArgs = 1 } ]
+                    <>  appendChars s'
     convert (JC.TKeywordConstant kc) = convert kc
     convert (JC.TVarName nm) = pushVar nm
     convert (JC.TArrayExp ae) = convert ae
@@ -216,8 +233,14 @@ instance Convert JC.EKeywordConstant where
 
 instance Convert JC.ArrayExp where
     convert JC.ArrayExp { JC.arrayExpName = nm 
-                         , JC.arrayExp     = ae } =
-        undefined
+                         , JC.arrayExp     = ae } = do
+        nm' <- pushVar nm
+        ae' <- convert ae
+        return $    nm'
+               <>   ae'
+               <>   [   VM.AL_VM VM.ADD
+                    ,   VM.M_VM $ VM.MemCMD VM.POP VM.POINTER 1
+                    ,   VM.M_VM $ VM.MemCMD VM.PUSH VM.THAT 0 ]
 
 instance Convert JC.SubroutineCall where
     convert (JC.SR JC.BasicSRCall { JC.srName = snm
